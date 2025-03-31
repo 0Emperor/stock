@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-
 	optimizer "stock/optimize"
 	"stock/parser"
 	tfm "stock/stock"
@@ -13,6 +12,7 @@ import (
 
 func main() {
 	args := os.Args
+	
 	if len(args) != 3 {
 		fmt.Println("usage:\n\n./stock_exchange <file> <waiting_time>")
 		return
@@ -22,16 +22,20 @@ func main() {
 		fmt.Println("invalid waiting time")
 		return
 	}
+	timeout := time.After(time.Duration(1000000000*waiting_time))
 	file := os.Args[1]
 	data, err := parser.ParseFile(file)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	go func() {
-		time.Sleep(time.Duration(waiting_time * 1000000000))
+	done :=make(chan int, 1)
+	go optimizer.Optimize(data,done)
+	select{
+	case cycle:=<-done:
+		fmt.Println("no more work ",cycle)
 		tfm.Println(data)
-		os.Exit(0)
-	}()
-	optimizer.Optimze(data)
+	case <-timeout:
+		fmt.Println("more work left after timeout")
+	}
 }

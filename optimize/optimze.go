@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"stock/parser"
-	tfm "stock/stock"
 )
 
 type managment struct {
@@ -12,10 +11,11 @@ type managment struct {
 	task       parser.Task
 }
 
-func Optimze(data *parser.BuildData) {
+func Optimize(data *parser.Stock_exchange, done chan int) {
 	currentCicle := 0
-	mainPrcs, yes := data.FindProductResource(data.Optimize[0])
+	mainPrcs, yes := data.FindProductResource(data.To_Optimize[len(data.To_Optimize)-1])
 	CurentProcesses := []managment{}
+
 	if yes {
 		for {
 			for i := 0; i < len(CurentProcesses); i++ {
@@ -41,15 +41,19 @@ func Optimze(data *parser.BuildData) {
 
 		}
 	}
-
-	fmt.Println("no more thing to do at cicle ", currentCicle)
-	tfm.Println(data)
+done<-currentCicle
 }
-func notYet(task parser.Task, data *parser.BuildData, currentCicle int, whatever []managment) []managment {
+
+func notYet(task parser.Task, data *parser.Stock_exchange, currentCicle int, whatever []managment) []managment {
 	for need, amount := range task.Requirements {
 		i := data.Stock[need]
 		prcs, yes := data.FindProductResource(need)
 		if yes {
+			for _, v := range whatever {
+				if v.task.Name == prcs.Name {
+					i += prcs.Products[need]
+				}
+			}
 			for i < amount {
 				if !data.CheckStock(prcs) {
 					return notYet(prcs, data, currentCicle, whatever)
@@ -57,7 +61,7 @@ func notYet(task parser.Task, data *parser.BuildData, currentCicle int, whatever
 					fmt.Printf("%v:%v\n", currentCicle, prcs.Name)
 					data.SchedualTask(prcs)
 					whatever = append(whatever, managment{currentCicle, prcs})
-					i++
+					i += prcs.Products[need]
 				}
 			}
 		} else if i < amount {

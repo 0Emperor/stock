@@ -13,12 +13,12 @@ type Stock_exchange struct {
 	To_Optimize  []string
 }
 
-func (b *BuildData) SchedualTask(task Task) {
+func (b *Stock_exchange) SchedualTask(task Task) {
 	for req, qua := range task.Requirements {
 		b.Stock[req] -= qua
 	}
 }
-func (b *BuildData) CheckStock(task Task) bool {
+func (b *Stock_exchange) CheckStock(task Task) bool {
 	for req, qua := range task.Requirements {
 		if b.Stock[req]-qua <0 {
 			return false
@@ -26,15 +26,15 @@ func (b *BuildData) CheckStock(task Task) bool {
 	}
 	return true
 }
-func (b *BuildData) EndTask(task Task) {
+func (b *Stock_exchange) EndTask(task Task) {
 	for prd, qua := range task.Products {
 		b.Stock[prd] += qua
 	}
 }
-func (b *BuildData) FindProductResource(product string) (Task,bool ){
+func (b *Stock_exchange) FindProductResource(product string) (Task,bool ){
 	Task := Task{}
 	current := 0
-	for _, prcs := range b.Processes {
+	for _, prcs := range b.Tasks {
 		if amount, exists := prcs.Products[product]; exists && amount > current {
 			Task = prcs
 			current =amount

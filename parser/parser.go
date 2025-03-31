@@ -41,7 +41,16 @@ func ParseFile(filename string) (*Stock_exchange, error) {
 
 		if match := processRegex.FindStringSubmatch(line); match != nil {
 			reqs := parseKeyValuePairs(match[2])
+			
 			prods := parseKeyValuePairs(match[3])
+			for req:= range reqs {
+				for prd:= range prods {
+					if prd==req {
+						reqs[req]=0
+						prods[prd]=0
+					}
+				}
+			}
 			cycles, _ := strconv.Atoi(match[4])
 			data.Tasks = append(data.Tasks, Task{
 				Name:         match[1],
