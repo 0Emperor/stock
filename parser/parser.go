@@ -4,70 +4,80 @@ import (
 	"bufio"
 	"errors"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
-func ParseFile(FileName string) error {
-	file, err := os.Open(FileName)
+func ParseFile(filename string) (*Stock_exchange, error) {
+	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
-	scaner := bufio.NewScanner(file)
-	for scaner.Scan() {
-		line := scaner.Text()
-		if line[0] == '$' {
+
+	data := &Stock_exchange{
+		Stock:     make(map[string]int),
+		Tasks: []Task{},
+		To_Optimize:  []string{},
+	}
+
+	scanner := bufio.NewScanner(file)
+	stockRegex := regexp.MustCompile(`^([a-zA-Z0-9_]+):(\d+)$`)
+	processRegex := regexp.MustCompile(`^([a-zA-Z0-9_]+):\((.*?)\):\((.*?)\):(\d+)$`)
+	optimizeRegex := regexp.MustCompile(`^optimize:\((.*?)\)$`)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		Spline, err := Split(line)
-		if err != nil {
-			return err
+
+		if match := stockRegex.FindStringSubmatch(line); match != nil {
+			qty, _ := strconv.Atoi(match[2])
+			data.Stock[match[1]] = qty
+			continue
 		}
-		if len(Spline) == 2 {
-			if strings.HasPrefix(line, "optimize") {
-				
-			}
-		} else if len(Spline) == 4 {
-		} else {
-			return errors.New("error parsing " + line)
+
+		if match := processRegex.FindStringSubmatch(line); match != nil {
+			reqs := parseKeyValuePairs(match[2])
+			prods := parseKeyValuePairs(match[3])
+			cycles, _ := strconv.Atoi(match[4])
+			data.Tasks = append(data.Tasks, Task{
+				Name:         match[1],
+				Requirements: reqs,
+				Products:     prods,
+				NbCycles:     cycles,
+			})
+			continue
 		}
+
+		if match := optimizeRegex.FindStringSubmatch(line); match != nil {
+			data.To_Optimize = strings.Split(match[1], ";")
+			continue
+		}
+		return nil,errors.New("error parsing: " + line)
 	}
-	return nil
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
-func Split(line string) ([]string, error) {
-	slice := []string{}
-	holder := ""
-	for i := 0; i < len(line); i++ {
-		v := line[i]
-		if v == ':' {
-			if holder == "" {
-				return nil, errors.New("error parsing " + line)
-			}
-			slice = append(slice, holder)
-		} else if v == '(' {
-			if holder != "" {
-				return nil, errors.New("error parsing " + line)
-			}
-			g := SearchPair(line[i:])
-			if g == -1 {
-				return nil, errors.New("error parsing " + line)
-			} else {
-				slice = append(slice, line[i+1:i+g])
-				i = g
-			}
-		} else {
-			holder += string(v)
+func parseKeyValuePairs(input string) map[string]int {
+	result := make(map[string]int)
+	if input == "" {
+		return result
+	}
+	pairs := strings.Split(input, ";")
+	for _, pair := range pairs {
+		parts := strings.Split(pair, ":")
+		if len(parts) == 2 {
+			qty, _ := strconv.Atoi(parts[1])
+			result[parts[0]] = qty
 		}
 	}
-	return slice, nil
-}
-
-func SearchPair(s string) int {
-	for i, v := range s {
-		if v == ')' {
-			return i
-		}
-	}
-	return -1
+	return result
 }
